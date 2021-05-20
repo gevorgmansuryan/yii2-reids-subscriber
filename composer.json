@@ -1,0 +1,26 @@
+{
+    "name": "gevman/yii2-redis-subscriber",
+    "description": "Yii2 Redis Channel Subscriber implementation for yii2-redis",
+    "type": "package",
+    "license": "MIT",
+    "require": {
+        "yiisoft/yii2-redis": "^2.0"
+    },
+    "authors": [
+        {
+            "name": "Gevorg Mansuryan",
+            "email": "gevorgmansuryan@gmail.com"
+        }
+    ],
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Gevman\\Yii2RedisSubscriber\\": "src/"
+        }
+    }
+}
