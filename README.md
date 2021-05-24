@@ -44,7 +44,13 @@ composer require gevman/yii2-redis-subscriber
 ```
 - Listen channel messages
 ```php
-\Yii::$app->redisSubscriber->listen('some_channel', function($type, $channel, $message) {
-    do_something($type, $channel, $message);
-});
+\Yii::$app->redisSubscriber->listen(
+    'some_channel', 
+    function($type, $channel, $message) {
+        do_something($type, $channel, $message);
+    },
+    function(\Throwable $error) {
+        \Yii::error($error->getMessage());
+    }
+);
 ```

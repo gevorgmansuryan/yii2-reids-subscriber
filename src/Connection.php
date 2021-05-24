@@ -11,7 +11,7 @@ class Connection extends \yii\redis\Connection
 {
     protected function parseSubscribeResponse()
     {
-        if (($line = fgets($this->socket)) === false) {
+        if (($line = fgets($this->socket)) !== false) {
             throw new SocketException('Failed to read from socket.');
         }
         $type = $line[0];
@@ -45,12 +45,18 @@ class Connection extends \yii\redis\Connection
         }
     }
 
-    public function listen($channels, callable $callback)
+    public function listen($channels, callable $callback, ?callable $errorCallback)
     {
         $this->subscribe($channels);
 
         while (true) {
-            call_user_func_array($callback, $this->parseSubscribeResponse());
+            try {
+                call_user_func_array($callback, $this->parseSubscribeResponse());
+            } catch (\Throwable $e) {
+                if (is_callable($errorCallback)) {
+                    call_user_func($errorCallback, $e);
+                }
+            }
         }
     }
 }
