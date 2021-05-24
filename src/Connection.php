@@ -45,7 +45,7 @@ class Connection extends \yii\redis\Connection
         }
     }
 
-    public function listen($channels, callable $callback, ?callable $errorCallback)
+    public function listen($channels, callable $callback, ?callable $errorCallback = null)
     {
         $this->subscribe($channels);
 
