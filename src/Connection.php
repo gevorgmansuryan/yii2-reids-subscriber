@@ -4,46 +4,67 @@
 namespace Gevman\Yii2RedisSubscriber;
 
 
+use yii\db\Exception;
+use yii\helpers\ArrayHelper;
+use yii\redis\SocketException;
 
-use Yii;
-use yii\base\Component;
-use Redis;
-
-class Connection extends Component
+class Connection extends \yii\redis\Connection
 {
-    public $redis = 'redis';
+    public $dataTimeout = -1;
 
-    /**
-     * @var \yii\redis\Connection
-     */
-    protected $redisComponent;
-
-    protected $redisPubSub;
-
-    public function init()
+    protected function parseSubscribeResponse()
     {
-        $this->redisComponent = Yii::$app->get($this->redis);
+        if (($line = fgets($this->socket)) !== false) {
+            throw new SocketException('Failed to read from socket.');
+        }
+        $type = ArrayHelper::getValue($line, 0);
 
-        $this->redis = new Redis();
-        $this->redis->connect(
-            $this->redisComponent->hostname,
-            $this->redisComponent->port,
-            $this->redisComponent->connectionTimeout
-        );
-
-        if ($this->redisComponent->password) {
-            $this->redis->auth($this->redisComponent->password);
+        if (!$line) {
+            return;
         }
 
-        parent::init();
+        $line = mb_substr($line, 1, -2, '8bit');
+        switch ($type) {
+            case '$': // Bulk replies
+                if ($line == '-1') {
+                    return null;
+                }
+                $length = (int)$line + 2;
+                $data = '';
+                while ($length > 0) {
+                    if (($block = fread($this->socket, $length)) === false) {
+                        throw new SocketException('Failed to read from socket.');
+                    }
+                    $data .= $block;
+                    $length -= mb_strlen($block, '8bit');
+                }
+
+                return mb_substr($data, 0, -2, '8bit');
+            case '*': // Multi-bulk replies
+                $count = (int) $line;
+                $data = [];
+                for ($i = 0; $i < $count; $i++) {
+                    $data[] = $this->parseSubscribeResponse();
+                }
+
+                return $data;
+            default:
+                throw new Exception('Received illegal data from redis: ' . $line);
+        }
     }
 
-    public function subscribe($channels, callable $callback)
+    public function listen($channels, callable $callback, ?callable $errorCallback = null)
     {
-        if(is_string($channels)) {
-            $channels = [$channels];
-        }
+        $this->subscribe($channels);
 
-        return $this->redisPubSub->subscribe($channels, $callback);
+        while (true) {
+            try {
+                call_user_func_array($callback, $this->parseSubscribeResponse());
+            } catch (\Throwable $e) {
+                if (is_callable($errorCallback)) {
+                    call_user_func($errorCallback, $e);
+                }
+            }
+        }
     }
 }
