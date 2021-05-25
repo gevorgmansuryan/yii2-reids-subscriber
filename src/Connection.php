@@ -14,10 +14,10 @@ class Connection extends \yii\redis\Connection
 
     protected function parseSubscribeResponse()
     {
-        if (($line = fgets($this->socket)) !== false) {
+        if (($line = fgets($this->socket)) === false) {
             throw new SocketException('Failed to read from socket.');
         }
-        $type = ArrayHelper::getValue($line, 0);
+        $type = $line[0] ?? null;
 
         if (!$line) {
             return;
