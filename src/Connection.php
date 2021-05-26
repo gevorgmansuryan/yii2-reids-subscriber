@@ -5,7 +5,6 @@ namespace Gevman\Yii2RedisSubscriber;
 
 
 use yii\db\Exception;
-use yii\helpers\ArrayHelper;
 use yii\redis\SocketException;
 
 class Connection extends \yii\redis\Connection
