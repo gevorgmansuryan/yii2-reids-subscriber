@@ -52,18 +52,38 @@ class Connection extends \yii\redis\Connection
         }
     }
 
-    public function listen($channels, callable $callback, ?callable $errorCallback = null)
+    public function listen($channels, callable $callback, ?callable $errorCallback = null, ?callable $fallback = null)
     {
-        $this->subscribe($channels);
+        try {
+
+            $this->subscribe($channels);
+        } catch (\Throwable $e) {
+            if (is_callable($errorCallback)) {
+                call_user_func($errorCallback, $e);
+            }
+
+            if (is_callable($fallback)) {
+                $fallback();
+            }
+
+            throw $e;
+        };
 
         while (true) {
             try {
-                call_user_func_array($callback, $this->parseSubscribeResponse());
+                $data = $this->parseSubscribeResponse();
+                call_user_func_array($callback, $data);
             } catch (\Throwable $e) {
                 if (is_callable($errorCallback)) {
-                    call_user_func($errorCallback, $e);
+                    if (call_user_func($errorCallback, $e) === false) {
+                        break;
+                    }
                 }
             }
+        }
+
+        if (is_callable($fallback)) {
+            $fallback();
         }
     }
 }
